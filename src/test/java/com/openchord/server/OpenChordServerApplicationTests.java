@@ -2,6 +2,7 @@ package com.openchord.server;
 
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
@@ -21,10 +22,12 @@ import com.openchord.server.catalog.ArtistRepository;
 import com.openchord.server.catalog.LyricLine;
 import com.openchord.server.catalog.Track;
 import com.openchord.server.playlist.PlaylistRepository;
+import com.openchord.server.playlist.Playlist;
 
 import java.io.ByteArrayInputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.zip.ZipEntry;
@@ -236,6 +239,7 @@ class OpenChordServerApplicationTests {
         assertNotNull(entries.get("catalog/assets.jsonl"));
         assertTrue(new String(entries.get("manifest.json")).contains("\"format\":\"openchord\""));
         assertTrue(new String(entries.get("catalog/tracks.jsonl")).contains("\"purpose\":\"playable\""));
+        assertTrue(new String(entries.get("catalog/tracks.jsonl")).contains("\"purpose\":\"original\""));
         assertEquals(
                 1,
                 entries.keySet().stream()
@@ -245,6 +249,23 @@ class OpenChordServerApplicationTests {
 
     @Test
     void exportedArchiveRestoresCatalogAndMedia() throws Exception {
+        Path playlistArtwork =
+                Path.of(
+                        System.getProperty("java.io.tmpdir"),
+                        "openchord-test-media",
+                        "playlist-artwork",
+                        "night-drive.jpg");
+        Files.createDirectories(playlistArtwork.getParent());
+        byte[] artworkBytes = "playlist-artwork".getBytes();
+        Files.write(playlistArtwork, artworkBytes);
+        Playlist playlist = new Playlist("Late night", "Two-lane glow", Instant.parse("2026-08-01T20:00:00Z"));
+        playlist.addTrack(track, Instant.parse("2026-08-01T20:01:00Z"));
+        playlist.setArtwork(
+                "playlist-artwork/night-drive.jpg",
+                MediaType.IMAGE_JPEG_VALUE,
+                Instant.parse("2026-08-01T20:02:00Z"));
+        playlists.saveAndFlush(playlist);
+
         byte[] archive = exportArchive();
         playlists.deleteAll();
         albums.deleteAll();
@@ -260,7 +281,7 @@ class OpenChordServerApplicationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.albums", is(1)))
                 .andExpect(jsonPath("$.tracks", is(1)))
-                .andExpect(jsonPath("$.playlists", is(0)))
+                .andExpect(jsonPath("$.playlists", is(1)))
                 .andExpect(jsonPath("$.skippedAlbums", is(0)));
 
         Album restored = albums.findAllDetailed().getFirst();
@@ -270,6 +291,17 @@ class OpenChordServerApplicationTests {
                 Files.exists(
                         Path.of(System.getProperty("java.io.tmpdir"), "openchord-test-media")
                                 .resolve(restored.getTracks().getFirst().getAudioPath())));
+
+        Playlist restoredPlaylist = playlists.findAllDetailed().getFirst();
+        assertEquals("Late night", restoredPlaylist.getName());
+        assertEquals("Two-lane glow", restoredPlaylist.getDescription());
+        assertEquals(track.getTitle(), restoredPlaylist.getEntries().getFirst().getTrack().getTitle());
+        assertEquals(MediaType.IMAGE_JPEG_VALUE, restoredPlaylist.getArtworkContentType());
+        assertArrayEquals(
+                artworkBytes,
+                Files.readAllBytes(
+                        Path.of(System.getProperty("java.io.tmpdir"), "openchord-test-media")
+                                .resolve(restoredPlaylist.getArtworkPath())));
     }
 
     @Test

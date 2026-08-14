@@ -11,6 +11,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 
+import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -34,6 +35,9 @@ public class Track {
     private int number;
     private String audioPath;
     private String contentType;
+    private String originalPath;
+    private String originalContentType;
+    private String originalFilename;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "album_id")
@@ -59,6 +63,15 @@ public class Track {
         this.number = number;
         this.audioPath = audioPath;
         this.contentType = contentType;
+        this.originalPath = audioPath;
+        this.originalContentType = contentType;
+        this.originalFilename = Path.of(audioPath).getFileName().toString();
+    }
+
+    public void setOriginalMedia(String path, String contentType, String filename) {
+        this.originalPath = path;
+        this.originalContentType = contentType;
+        this.originalFilename = filename;
     }
 
     void attachTo(Album album) {
@@ -106,6 +119,18 @@ public class Track {
 
     public String getContentType() {
         return contentType;
+    }
+
+    public String getOriginalPath() {
+        return originalPath;
+    }
+
+    public String getOriginalContentType() {
+        return originalContentType;
+    }
+
+    public String getOriginalFilename() {
+        return originalFilename;
     }
 
     public Album getAlbum() {

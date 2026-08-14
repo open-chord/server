@@ -3,7 +3,9 @@ target/
 media/library/
 media/.imports/
 media/artwork/
+media/playlist-artwork/
 media/tracks/
+media/originals/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

@@ -246,7 +246,17 @@ public class AlbumImportService {
                                     transcode ? "m4a" : draft.sourceFormat());
             Path target = mediaRoot.resolve(outputPath).normalize();
             Files.createDirectories(target.getParent());
+            String originalPath = outputPath;
             if (transcode) {
+                originalPath =
+                        "originals/%s-%02d-%02d-%s.%s"
+                                .formatted(
+                                        slug(request.album()),
+                                        draft.discNumber(),
+                                        draft.number(),
+                                        UUID.randomUUID(),
+                                        draft.sourceFormat());
+                copy(source, mediaRoot.resolve(originalPath));
                 run(
                         List.of(
                                 "ffmpeg",
@@ -273,6 +283,10 @@ public class AlbumImportService {
                             draft.number(),
                             outputPath,
                             transcode ? "audio/mp4" : contentType(draft.sourceFormat()));
+            track.setOriginalMedia(
+                    originalPath,
+                    contentType(draft.sourceFormat()),
+                    safeOriginalName(draft.originalFilename()));
             album.addTrack(track);
         }
         Album saved = albums.saveAndFlush(album);
@@ -422,6 +436,9 @@ public class AlbumImportService {
             case "m4a", "mp4" -> "audio/mp4";
             case "aac" -> "audio/aac";
             case "ogg", "opus" -> "audio/ogg";
+            case "flac" -> "audio/flac";
+            case "wav" -> "audio/wav";
+            case "aiff", "aif" -> "audio/aiff";
             default -> "application/octet-stream";
         };
     }
