@@ -110,6 +110,7 @@ public class AlbumImportController {
      * @param number       one-based track number
      * @param durationMs   duration in milliseconds
      * @param sourceFormat lowercase source extension
+     * @param originalFilename user-visible source filename returned during analysis
      */
     public record CommitTrack(
             String stagedFile,
@@ -117,7 +118,8 @@ public class AlbumImportController {
             int discNumber,
             int number,
             long durationMs,
-            String sourceFormat) {
+            String sourceFormat,
+            String originalFilename) {
     }
 
     /**

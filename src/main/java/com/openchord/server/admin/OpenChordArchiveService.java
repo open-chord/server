@@ -236,7 +236,8 @@ public class OpenChordArchiveService {
             for (JsonNode trackIdNode : requiredArray(albumRecord, "trackIds")) {
                 String trackId = trackIdNode.asText();
                 JsonNode trackRecord = requireRecord(trackRecords, trackId, "track");
-                JsonNode media = preferredMedia(requiredArray(trackRecord, "media"));
+                ArrayNode mediaRecords = requiredArray(trackRecord, "media");
+                JsonNode media = playableMedia(mediaRecords);
                 String assetId = requiredText(media, "assetId");
                 JsonNode asset = requireRecord(assetRecords, assetId, "track media");
                 String audioPath = storeAsset(archive, asset, "tracks");
@@ -248,6 +249,21 @@ public class OpenChordArchiveService {
                                 requiredPositiveInt(trackRecord, "trackNumber"),
                                 audioPath,
                                 requiredText(asset, "mediaType"));
+                JsonNode originalMedia = mediaByPurpose(mediaRecords, "original");
+                if (originalMedia != null) {
+                    String originalAssetId = requiredText(originalMedia, "assetId");
+                    JsonNode originalAsset =
+                            requireRecord(assetRecords, originalAssetId, "original track media");
+                    String originalPath =
+                            originalAssetId.equals(assetId)
+                                    ? audioPath
+                                    : storeAsset(archive, originalAsset, "originals");
+                    track.setOriginalMedia(
+                            originalPath,
+                            requiredText(originalAsset, "mediaType"),
+                            originalMedia.path("originalFilename").asText(
+                                    originalAsset.path("originalFilename").asText("original")));
+                }
                 album.addTrack(track);
                 importedTracks.put(trackId, track);
                 importedTrackCount++;
@@ -258,19 +274,29 @@ public class OpenChordArchiveService {
 
             int importedPlaylistCount = 0;
             for (JsonNode playlistRecord : playlistRecords.values()) {
-            Playlist playlist =
-                    new Playlist(
-                            requiredText(playlistRecord, "name"),
-                            playlistRecord.path("description").asText(""),
-                            Instant.now());
-            Set<UUID> included = new HashSet<>();
-            for (JsonNode entry : requiredArray(playlistRecord, "entries")) {
-                Track track = importedTracks.get(requiredText(entry, "trackId"));
-                if (track != null && included.add(track.getId())) {
-                    playlist.addTrack(track, Instant.now());
+                Instant importedAt = Instant.now();
+                Playlist playlist =
+                        new Playlist(
+                                requiredText(playlistRecord, "name"),
+                                playlistRecord.path("description").asText(""),
+                                importedAt);
+                JsonNode artworkAssetId = playlistRecord.path("artworkAssetId");
+                if (artworkAssetId.isTextual() && !artworkAssetId.asText().isBlank()) {
+                    JsonNode artworkAsset =
+                            requireRecord(
+                                    assetRecords, artworkAssetId.asText(), "playlist artwork");
+                    String artworkPath = storeAsset(archive, artworkAsset, "playlist-artwork");
+                    playlist.setArtwork(
+                            artworkPath, requiredText(artworkAsset, "mediaType"), importedAt);
                 }
-            }
-            playlists.saveAndFlush(playlist);
+                Set<UUID> included = new HashSet<>();
+                for (JsonNode entry : requiredArray(playlistRecord, "entries")) {
+                    Track track = importedTracks.get(requiredText(entry, "trackId"));
+                    if (track != null && included.add(track.getId())) {
+                        playlist.addTrack(track, importedAt);
+                    }
+                }
+                playlists.saveAndFlush(playlist);
                 importedPlaylistCount++;
             }
             return new ImportSummary(
@@ -326,10 +352,18 @@ public class OpenChordArchiveService {
         record.put("trackNumber", track.getNumber());
         record.put("durationMs", track.getDurationMs());
         credit(record.putArray("credits"), track.getAlbum().getArtist(), "primary");
-        ObjectNode media = record.putArray("media").addObject();
-        media.put("assetId", assetId(resolveMedia(track.getAudioPath())));
-        media.put("purpose", "playable");
-        media.put("preferred", true);
+        ArrayNode mediaRecords = record.putArray("media");
+        ObjectNode playable = mediaRecords.addObject();
+        playable.put("assetId", assetId(resolveMedia(track.getAudioPath())));
+        playable.put("purpose", "playable");
+        playable.put("preferred", true);
+        if (track.getOriginalPath() != null) {
+            ObjectNode original = mediaRecords.addObject();
+            original.put("assetId", assetId(resolveMedia(track.getOriginalPath())));
+            original.put("purpose", "original");
+            original.put("preferred", false);
+            original.put("originalFilename", track.getOriginalFilename());
+        }
         return record;
     }
 
@@ -388,7 +422,12 @@ public class OpenChordArchiveService {
             selectedAlbums.forEach(
                     album -> {
                         include.accept(album.getArtworkPath());
-                        album.getTracks().forEach(track -> include.accept(track.getAudioPath()));
+                        album.getTracks()
+                                .forEach(
+                                        track -> {
+                                            include.accept(track.getAudioPath());
+                                            include.accept(track.getOriginalPath());
+                                        });
                     });
             selectedPlaylists.forEach(playlist -> include.accept(playlist.getArtworkPath()));
         } catch (ArchiveIoException exception) {
@@ -523,12 +562,21 @@ public class OpenChordArchiveService {
         return relative;
     }
 
-    private JsonNode preferredMedia(ArrayNode media) {
+    private JsonNode playableMedia(ArrayNode media) {
+        JsonNode playable = mediaByPurpose(media, "playable");
+        if (playable != null) return playable;
         for (JsonNode candidate : media) {
             if (candidate.path("preferred").asBoolean()) return candidate;
         }
         if (media.isEmpty()) throw new IllegalArgumentException("Track has no embedded media");
         return media.get(0);
+    }
+
+    private JsonNode mediaByPurpose(ArrayNode media, String purpose) {
+        for (JsonNode candidate : media) {
+            if (purpose.equals(candidate.path("purpose").asText())) return candidate;
+        }
+        return null;
     }
 
     private JsonNode firstCredit(JsonNode credits, String... roles) {
