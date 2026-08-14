@@ -19,8 +19,8 @@ public interface PlaylistRepository extends JpaRepository<Playlist, UUID> {
                 "entries.track.album.artist",
                 "entries.track.lyrics"
             })
-    @Query("select distinct playlist from Playlist playlist order by playlist.updatedAt desc")
-    List<Playlist> findAllDetailed();
+    @Query("select distinct playlist from Playlist playlist where playlist.owner.id = :ownerId order by playlist.updatedAt desc")
+    List<Playlist> findAllDetailedByOwnerId(@Param("ownerId") UUID ownerId);
 
     @EntityGraph(
             attributePaths = {
@@ -30,6 +30,14 @@ public interface PlaylistRepository extends JpaRepository<Playlist, UUID> {
                 "entries.track.album.artist",
                 "entries.track.lyrics"
             })
+    @Query("select distinct playlist from Playlist playlist where playlist.id = :id and playlist.owner.id = :ownerId")
+    Optional<Playlist> findDetailedByIdAndOwnerId(@Param("id") UUID id, @Param("ownerId") UUID ownerId);
+
+    @EntityGraph(attributePaths = {"entries", "entries.track", "entries.track.album", "entries.track.album.artist", "entries.track.lyrics"})
     @Query("select distinct playlist from Playlist playlist where playlist.id = :id")
     Optional<Playlist> findDetailedById(@Param("id") UUID id);
+
+    @EntityGraph(attributePaths = {"entries", "entries.track", "entries.track.album", "entries.track.album.artist", "entries.track.lyrics"})
+    @Query("select distinct playlist from Playlist playlist order by playlist.updatedAt desc")
+    List<Playlist> findAllDetailed();
 }

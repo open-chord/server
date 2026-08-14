@@ -1,6 +1,7 @@
 package com.openchord.server.graphql;
 
 import com.openchord.server.catalog.CatalogService;
+import com.openchord.server.auth.OpenChordUser;
 import com.openchord.server.config.OpenChordProperties;
 import com.openchord.server.graphql.CatalogTypes.AlbumView;
 import com.openchord.server.graphql.CatalogTypes.PlaybackEventInput;
@@ -17,6 +18,7 @@ import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 /**
  * Resolves the public catalog queries and playback mutation defined in {@code schema.graphqls}.
@@ -56,63 +58,63 @@ public class CatalogGraphQlController {
     }
 
     @QueryMapping
-    public List<AlbumView> recentlyPlayed(@Argument Integer limit) {
-        return catalog.recentlyPlayed(limit == null ? 10 : limit).stream()
+    public List<AlbumView> recentlyPlayed(@AuthenticationPrincipal OpenChordUser user, @Argument Integer limit) {
+        return catalog.recentlyPlayed(user, limit == null ? 10 : limit).stream()
                 .map(album -> AlbumView.from(album, properties))
                 .toList();
     }
 
     @QueryMapping
-    public List<PlaylistView> playlists() {
-        return playlists.playlists().stream()
+    public List<PlaylistView> playlists(@AuthenticationPrincipal OpenChordUser user) {
+        return playlists.playlists(user).stream()
                 .map(playlist -> PlaylistView.from(playlist, properties))
                 .toList();
     }
 
     @QueryMapping
-    public PlaylistView playlist(@Argument UUID id) {
+    public PlaylistView playlist(@AuthenticationPrincipal OpenChordUser user, @Argument UUID id) {
         try {
-            return PlaylistView.from(playlists.playlist(id), properties);
+            return PlaylistView.from(playlists.playlist(user, id), properties);
         } catch (PlaylistNotFoundException ignored) {
             return null;
         }
     }
 
     @MutationMapping
-    public PlaybackEventView recordPlayback(@Argument PlaybackEventInput input) {
-        return PlaybackEventView.from(playback.record(input));
+    public PlaybackEventView recordPlayback(@AuthenticationPrincipal OpenChordUser user, @Argument PlaybackEventInput input) {
+        return PlaybackEventView.from(playback.record(user, input));
     }
 
     @MutationMapping
-    public PlaylistView createPlaylist(@Argument String name) {
-        return PlaylistView.from(playlists.create(name), properties);
+    public PlaylistView createPlaylist(@AuthenticationPrincipal OpenChordUser user, @Argument String name) {
+        return PlaylistView.from(playlists.create(user, name), properties);
     }
 
     @MutationMapping
-    public PlaylistView renamePlaylist(@Argument UUID id, @Argument String name) {
-        return PlaylistView.from(playlists.rename(id, name), properties);
+    public PlaylistView renamePlaylist(@AuthenticationPrincipal OpenChordUser user, @Argument UUID id, @Argument String name) {
+        return PlaylistView.from(playlists.rename(user, id, name), properties);
     }
 
     @MutationMapping
-    public boolean deletePlaylist(@Argument UUID id) {
-        return playlists.delete(id);
+    public boolean deletePlaylist(@AuthenticationPrincipal OpenChordUser user, @Argument UUID id) {
+        return playlists.delete(user, id);
     }
 
     @MutationMapping
     public PlaylistView addTrackToPlaylist(
-            @Argument UUID playlistId, @Argument UUID trackId) {
-        return PlaylistView.from(playlists.addTrack(playlistId, trackId), properties);
+            @AuthenticationPrincipal OpenChordUser user, @Argument UUID playlistId, @Argument UUID trackId) {
+        return PlaylistView.from(playlists.addTrack(user, playlistId, trackId), properties);
     }
 
     @MutationMapping
     public PlaylistView removeTrackFromPlaylist(
-            @Argument UUID playlistId, @Argument UUID trackId) {
-        return PlaylistView.from(playlists.removeTrack(playlistId, trackId), properties);
+            @AuthenticationPrincipal OpenChordUser user, @Argument UUID playlistId, @Argument UUID trackId) {
+        return PlaylistView.from(playlists.removeTrack(user, playlistId, trackId), properties);
     }
 
     @MutationMapping
     public PlaylistView moveTrackInPlaylist(
-            @Argument UUID playlistId, @Argument UUID trackId, @Argument int position) {
-        return PlaylistView.from(playlists.moveTrack(playlistId, trackId, position), properties);
+            @AuthenticationPrincipal OpenChordUser user, @Argument UUID playlistId, @Argument UUID trackId, @Argument int position) {
+        return PlaylistView.from(playlists.moveTrack(user, playlistId, trackId, position), properties);
     }
 }

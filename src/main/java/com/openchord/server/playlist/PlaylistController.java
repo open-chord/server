@@ -1,6 +1,7 @@
 package com.openchord.server.playlist;
 
 import com.openchord.server.config.OpenChordProperties;
+import com.openchord.server.auth.OpenChordUser;
 import com.openchord.server.graphql.CatalogTypes.PlaylistView;
 
 import org.springframework.http.MediaType;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 /** HTTP endpoint for playlist creation with optional binary artwork. */
 @RestController
@@ -24,9 +26,10 @@ public class PlaylistController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public PlaylistView create(
+            @AuthenticationPrincipal OpenChordUser user,
             @RequestParam String name,
             @RequestParam(defaultValue = "") String description,
             @RequestParam(required = false) MultipartFile artwork) {
-        return PlaylistView.from(playlists.create(name, description, artwork), properties);
+        return PlaylistView.from(playlists.create(user, name, description, artwork), properties);
     }
 }

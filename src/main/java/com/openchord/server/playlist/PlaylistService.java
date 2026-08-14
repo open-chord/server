@@ -3,6 +3,7 @@ package com.openchord.server.playlist;
 import com.openchord.server.catalog.Track;
 import com.openchord.server.catalog.TrackRepository;
 import com.openchord.server.config.OpenChordProperties;
+import com.openchord.server.auth.OpenChordUser;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -32,26 +33,26 @@ public class PlaylistService {
     }
 
     @Transactional(readOnly = true)
-    public List<Playlist> playlists() {
-        return playlists.findAllDetailed();
+    public List<Playlist> playlists(OpenChordUser owner) {
+        return playlists.findAllDetailedByOwnerId(owner.getId());
     }
 
     @Transactional(readOnly = true)
-    public Playlist playlist(UUID id) {
-        return findDetailed(id);
+    public Playlist playlist(OpenChordUser owner, UUID id) {
+        return findDetailed(owner, id);
     }
 
     @Transactional
-    public Playlist create(String name) {
-        return create(name, "", null);
+    public Playlist create(OpenChordUser owner, String name) {
+        return create(owner, name, "", null);
     }
 
     @Transactional
-    public Playlist create(String name, String description, MultipartFile artwork) {
+    public Playlist create(OpenChordUser owner, String name, String description, MultipartFile artwork) {
         Instant now = clock.instant();
         Playlist playlist =
                 playlists.saveAndFlush(
-                        new Playlist(normalizeName(name), normalizeDescription(description), now));
+                        new Playlist(normalizeName(name), normalizeDescription(description), now, owner));
         if (artwork == null || artwork.isEmpty()) {
             return playlist;
         }
@@ -81,15 +82,15 @@ public class PlaylistService {
     }
 
     @Transactional
-    public Playlist rename(UUID id, String name) {
-        Playlist playlist = findDetailed(id);
+    public Playlist rename(OpenChordUser owner, UUID id, String name) {
+        Playlist playlist = findDetailed(owner, id);
         playlist.rename(normalizeName(name), clock.instant());
         return playlists.saveAndFlush(playlist);
     }
 
     @Transactional
-    public boolean delete(UUID id) {
-        if (!playlists.existsById(id)) {
+    public boolean delete(OpenChordUser owner, UUID id) {
+        if (playlists.findDetailedByIdAndOwnerId(id, owner.getId()).isEmpty()) {
             return false;
         }
         playlists.deleteById(id);
@@ -97,36 +98,36 @@ public class PlaylistService {
     }
 
     @Transactional
-    public Playlist addTrack(UUID playlistId, UUID trackId) {
-        Playlist playlist = findDetailed(playlistId);
+    public Playlist addTrack(OpenChordUser owner, UUID playlistId, UUID trackId) {
+        Playlist playlist = findDetailed(owner, playlistId);
         Track track =
                 tracks.findDetailedById(trackId)
                         .orElseThrow(() -> new PlaylistNotFoundException("Track not found"));
         playlist.addTrack(track, clock.instant());
         playlists.saveAndFlush(playlist);
-        return findDetailed(playlistId);
+        return findDetailed(owner, playlistId);
     }
 
     @Transactional
-    public Playlist removeTrack(UUID playlistId, UUID trackId) {
-        Playlist playlist = findDetailed(playlistId);
+    public Playlist removeTrack(OpenChordUser owner, UUID playlistId, UUID trackId) {
+        Playlist playlist = findDetailed(owner, playlistId);
         if (!playlist.removeTrack(trackId, clock.instant())) {
             throw new PlaylistNotFoundException("Track is not in this playlist");
         }
         playlists.saveAndFlush(playlist);
-        return findDetailed(playlistId);
+        return findDetailed(owner, playlistId);
     }
 
     @Transactional
-    public Playlist moveTrack(UUID playlistId, UUID trackId, int position) {
-        Playlist playlist = findDetailed(playlistId);
+    public Playlist moveTrack(OpenChordUser owner, UUID playlistId, UUID trackId, int position) {
+        Playlist playlist = findDetailed(owner, playlistId);
         playlist.moveTrack(trackId, position, clock.instant());
         playlists.saveAndFlush(playlist);
-        return findDetailed(playlistId);
+        return findDetailed(owner, playlistId);
     }
 
-    private Playlist findDetailed(UUID id) {
-        return playlists.findDetailedById(id)
+    private Playlist findDetailed(OpenChordUser owner, UUID id) {
+        return playlists.findDetailedByIdAndOwnerId(id, owner.getId())
                 .orElseThrow(() -> new PlaylistNotFoundException("Playlist not found"));
     }
 
