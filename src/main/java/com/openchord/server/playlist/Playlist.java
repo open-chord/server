@@ -1,12 +1,16 @@
 package com.openchord.server.playlist;
 
 import com.openchord.server.catalog.Track;
+import com.openchord.server.auth.OpenChordUser;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 
@@ -36,6 +40,10 @@ public class Playlist {
     private Instant createdAt;
     private Instant updatedAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id")
+    private OpenChordUser owner;
+
     @OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("position")
     private List<PlaylistEntry> entries = new ArrayList<>();
@@ -44,10 +52,15 @@ public class Playlist {
     }
 
     public Playlist(String name, String description, Instant now) {
+        this(name, description, now, null);
+    }
+
+    public Playlist(String name, String description, Instant now, OpenChordUser owner) {
         this.name = name;
         this.description = description;
         this.createdAt = now;
         this.updatedAt = now;
+        this.owner = owner;
     }
 
     public void rename(String name, Instant now) {
@@ -131,4 +144,6 @@ public class Playlist {
     public List<PlaylistEntry> getEntries() {
         return List.copyOf(entries);
     }
+
+    public OpenChordUser getOwner() { return owner; }
 }

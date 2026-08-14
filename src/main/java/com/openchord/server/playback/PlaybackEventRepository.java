@@ -18,8 +18,9 @@ public interface PlaybackEventRepository extends JpaRepository<PlaybackEvent, UU
             """
                     select event.track.album.id
                     from PlaybackEvent event
+                    where event.user.id = :userId
                     group by event.track.album.id
                     order by max(event.playedAt) desc
                     """)
-    List<UUID> findRecentAlbumIds(Pageable pageable);
+    List<UUID> findRecentAlbumIds(UUID userId, Pageable pageable);
 }

@@ -1,6 +1,7 @@
 package com.openchord.server.catalog;
 
 import com.openchord.server.playback.PlaybackEventRepository;
+import com.openchord.server.auth.OpenChordUser;
 
 import java.util.List;
 import java.util.Optional;
@@ -51,8 +52,8 @@ public class CatalogService {
     }
 
     @Transactional(readOnly = true)
-    public List<Album> recentlyPlayed(int limit) {
-        return playbackEvents.findRecentAlbumIds(PageRequest.of(0, Math.clamp(limit, 1, 50))).stream()
+    public List<Album> recentlyPlayed(OpenChordUser user, int limit) {
+        return playbackEvents.findRecentAlbumIds(user.getId(), PageRequest.of(0, Math.clamp(limit, 1, 50))).stream()
                 .map(albums::findDetailedById)
                 .flatMap(Optional::stream)
                 .toList();

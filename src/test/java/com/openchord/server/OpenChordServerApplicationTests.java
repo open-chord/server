@@ -42,6 +42,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.mock.web.MockMultipartFile;
 import org.testcontainers.junit.jupiter.Container;
@@ -69,6 +72,8 @@ class OpenChordServerApplicationTests {
     @Autowired
     private MockMvc mvc;
     @Autowired
+    private WebApplicationContext context;
+    @Autowired
     private ArtistRepository artists;
     @Autowired
     private AlbumRepository albums;
@@ -77,9 +82,23 @@ class OpenChordServerApplicationTests {
 
     private Album album;
     private Track track;
+    private static String ownerToken;
 
     @BeforeEach
     void seedCatalog() throws Exception {
+        if (ownerToken == null) {
+            MvcResult setup = mvc.perform(post("/api/auth/setup")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"username":"owner","displayName":"Owner","password":"correct-horse-battery","deviceName":"Tests","mode":"FAMILY"}
+                                    """))
+                    .andExpect(status().isOk()).andReturn();
+            ownerToken = com.jayway.jsonpath.JsonPath.read(setup.getResponse().getContentAsString(), "$.accessToken");
+        }
+        mvc = MockMvcBuilders.webAppContextSetup(context)
+                .apply(springSecurity())
+                .defaultRequest(get("/").header("Authorization", "Bearer " + ownerToken))
+                .build();
         playlists.deleteAll();
         albums.deleteAll();
         artists.deleteAll();

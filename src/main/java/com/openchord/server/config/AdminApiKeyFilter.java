@@ -11,11 +11,9 @@ import java.security.MessageDigest;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /** Optional shared-secret boundary for administration endpoints. */
-@Component
 public class AdminApiKeyFilter extends OncePerRequestFilter {
     public static final String HEADER = "X-OpenChord-Admin-Key";
 

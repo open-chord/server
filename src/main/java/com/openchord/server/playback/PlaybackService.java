@@ -3,6 +3,7 @@ package com.openchord.server.playback;
 import com.openchord.server.catalog.Track;
 import com.openchord.server.catalog.TrackRepository;
 import com.openchord.server.graphql.CatalogTypes.PlaybackEventInput;
+import com.openchord.server.auth.OpenChordUser;
 import graphql.GraphqlErrorException;
 
 import java.time.Instant;
@@ -36,7 +37,7 @@ public class PlaybackService {
      *                                  {@code NOT_FOUND} for an unknown track
      */
     @Transactional
-    public PlaybackEvent record(PlaybackEventInput input) {
+    public PlaybackEvent record(OpenChordUser user, PlaybackEventInput input) {
         if (input.positionMs() < 0) {
             throw GraphqlErrorException.newErrorException()
                     .message("positionMs must be non-negative")
@@ -57,6 +58,6 @@ public class PlaybackService {
                         track,
                         input.playedAt() == null ? Instant.now() : input.playedAt().toInstant(),
                         Math.min(input.positionMs(), track.getDurationMs()),
-                        input.completed()));
+                        input.completed(), user));
     }
 }

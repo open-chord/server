@@ -1,6 +1,7 @@
 package com.openchord.server.playback;
 
 import com.openchord.server.catalog.Track;
+import com.openchord.server.auth.OpenChordUser;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -33,14 +34,23 @@ public class PlaybackEvent {
     private long positionMs;
     private boolean completed;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private OpenChordUser user;
+
     protected PlaybackEvent() {
     }
 
     public PlaybackEvent(Track track, Instant playedAt, long positionMs, boolean completed) {
+        this(track, playedAt, positionMs, completed, null);
+    }
+
+    public PlaybackEvent(Track track, Instant playedAt, long positionMs, boolean completed, OpenChordUser user) {
         this.track = track;
         this.playedAt = playedAt;
         this.positionMs = positionMs;
         this.completed = completed;
+        this.user = user;
     }
 
     public UUID getId() {
@@ -62,4 +72,6 @@ public class PlaybackEvent {
     public boolean isCompleted() {
         return completed;
     }
+
+    public OpenChordUser getUser() { return user; }
 }
