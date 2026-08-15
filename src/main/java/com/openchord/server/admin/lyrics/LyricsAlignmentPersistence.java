@@ -1,4 +1,4 @@
-package com.openchord.server.admin;
+package com.openchord.server.admin.lyrics;
 
 import com.openchord.server.catalog.LyricLine;
 import com.openchord.server.catalog.Track;

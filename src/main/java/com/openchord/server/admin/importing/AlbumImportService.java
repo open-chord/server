@@ -1,12 +1,12 @@
-package com.openchord.server.admin;
+package com.openchord.server.admin.importing;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.openchord.server.admin.AlbumImportController.CommitImport;
-import com.openchord.server.admin.AlbumImportController.CommitTrack;
-import com.openchord.server.admin.AlbumImportController.ImportDraft;
-import com.openchord.server.admin.AlbumImportController.ImportResult;
-import com.openchord.server.admin.AlbumImportController.ImportTrack;
+import com.openchord.server.admin.importing.AlbumImportController.CommitImport;
+import com.openchord.server.admin.importing.AlbumImportController.CommitTrack;
+import com.openchord.server.admin.importing.AlbumImportController.ImportDraft;
+import com.openchord.server.admin.importing.AlbumImportController.ImportResult;
+import com.openchord.server.admin.importing.AlbumImportController.ImportTrack;
 import com.openchord.server.catalog.Album;
 import com.openchord.server.catalog.AlbumRepository;
 import com.openchord.server.catalog.Artist;

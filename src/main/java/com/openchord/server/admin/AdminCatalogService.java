@@ -1,5 +1,7 @@
 package com.openchord.server.admin;
 
+import com.openchord.server.admin.lyrics.LyricsAlignmentProvider;
+import com.openchord.server.admin.lyrics.LyricsAlignmentWorker;
 import com.openchord.server.catalog.Album;
 import com.openchord.server.catalog.AlbumRepository;
 import com.openchord.server.catalog.Artist;

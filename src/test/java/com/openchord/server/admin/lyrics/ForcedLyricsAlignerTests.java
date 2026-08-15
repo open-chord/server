@@ -1,4 +1,4 @@
-package com.openchord.server.admin;
+package com.openchord.server.admin.lyrics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;

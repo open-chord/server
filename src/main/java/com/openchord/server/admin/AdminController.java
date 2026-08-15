@@ -1,5 +1,6 @@
 package com.openchord.server.admin;
 
+import com.openchord.server.admin.importing.AlbumImportController;
 import com.openchord.server.catalog.Album;
 import com.openchord.server.catalog.Track;
 import com.openchord.server.catalog.LyricsStatus;

@@ -1,4 +1,4 @@
-package com.openchord.server.admin;
+package com.openchord.server.admin.importing;
 
 import java.io.IOException;
 import java.util.List;

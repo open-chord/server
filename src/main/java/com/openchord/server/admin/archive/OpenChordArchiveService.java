@@ -1,11 +1,11 @@
-package com.openchord.server.admin;
+package com.openchord.server.admin.archive;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.openchord.server.admin.OpenChordArchiveController.ImportSummary;
-import com.openchord.server.admin.OpenChordArchiveController.PlaylistOption;
+import com.openchord.server.admin.archive.OpenChordArchiveController.ImportSummary;
+import com.openchord.server.admin.archive.OpenChordArchiveController.PlaylistOption;
 import com.openchord.server.catalog.Album;
 import com.openchord.server.catalog.AlbumRepository;
 import com.openchord.server.catalog.Artist;
