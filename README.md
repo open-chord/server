@@ -55,7 +55,12 @@ model once and start the compose overlay:
 docker compose -f compose.yaml -f compose.lyrics.yaml up --build
 ```
 
-The official whisper.cpp image supports both `linux/amd64` and `linux/arm64`.
+The registry currently publishes separate `main` and `main-arm64` tags. The
+download helper selects one from the host architecture. The compose runtime
+defaults to the amd64 image because the current official arm64 server can raise
+`SIGILL` in some macOS Docker virtual machines. Native Linux arm64 deployments
+can opt in with `WHISPER_IMAGE=ghcr.io/ggml-org/whisper.cpp:main-arm64` and
+`WHISPER_PLATFORM=linux/arm64`.
 Model files are intentionally excluded from the application image and remain in
 `models/whisper` on the host.
 

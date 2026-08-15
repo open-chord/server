@@ -26,9 +26,9 @@ public class WhisperLyricsAlignmentProvider implements LyricsAlignmentProvider {
     private final HttpClient client =
             HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
-    public WhisperLyricsAlignmentProvider(OpenChordProperties properties, ObjectMapper mapper) {
+    public WhisperLyricsAlignmentProvider(OpenChordProperties properties) {
         this.endpoint = properties.lyricsAlignerUrl();
-        this.mapper = mapper;
+        this.mapper = new ObjectMapper();
     }
 
     @Override
