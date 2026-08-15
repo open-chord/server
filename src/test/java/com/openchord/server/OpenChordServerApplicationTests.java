@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -230,6 +231,29 @@ class OpenChordServerApplicationTests {
                                 .content("{\"query\":\"{ recentlyPlayed { id } }\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.recentlyPlayed[0].id", is(album.getId().toString())));
+    }
+
+    @Test
+    void replacingLyricsCanReuseExistingTimestampsAndUpdatesClientProjection() throws Exception {
+        mvc.perform(
+                        put("/api/admin/tracks/{id}/lyrics", track.getId())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                        {"lyrics":"[00:00.000]Replacement line\\n[00:09.000]Second line"}
+                                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lyricLines", is(2)));
+
+        mvc.perform(
+                        post("/graphql")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                        {"query":"query { albums { tracks { id lyrics { text startMs } } } }"}
+                                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.albums[0].tracks[0].lyrics.length()", is(2)))
+                .andExpect(jsonPath("$.data.albums[0].tracks[0].lyrics[0].text", is("Replacement line")))
+                .andExpect(jsonPath("$.data.albums[0].tracks[0].lyrics[0].startMs", is(0)));
     }
 
     @Test

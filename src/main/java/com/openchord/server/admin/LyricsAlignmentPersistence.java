@@ -32,6 +32,8 @@ class LyricsAlignmentPersistence {
                                         line.endMs(),
                                         line.confidence()))
                         .toList();
+        track.replaceLyrics(List.of());
+        tracks.saveAndFlush(track);
         track.completeLyricsAlignment(lines, result.engine(), result.averageConfidence());
         tracks.saveAndFlush(track);
     }

@@ -159,6 +159,10 @@ public class AdminCatalogService {
                 track.getLyricsSource().isBlank()
                         ? sourceText(lyricLines)
                         : track.getLyricsSource();
+        // Hibernate can insert replacements before orphan deletes. Flush the empty collection
+        // first so a line reusing the same (track_id, start_ms) does not violate the DB key.
+        track.replaceLyrics(List.of());
+        tracks.saveAndFlush(track);
         track.replaceSynchronizedLyrics(sourceText, lyricLines);
         return AdminController.TrackView.from(tracks.saveAndFlush(track));
     }
