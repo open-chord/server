@@ -164,6 +164,8 @@ docker build -t openchord-back:local .
 ```
 
 Tests use Testcontainers with PostgreSQL 17 rather than an in-memory database.
+`PostgresTestContainerConfig` owns the shared Spring-managed database container,
+while integration scenarios live beside the product package they exercise.
 GitHub Actions reports formatting, static analysis, tests, and container build
 as separate checks. The runtime image is unprivileged; Compose grants the API
 write access to `./media` for administration workflows.
