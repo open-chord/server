@@ -23,6 +23,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -42,16 +43,22 @@ public class AdminCatalogService {
     private final AlbumRepository albums;
     private final TrackRepository tracks;
     private final Path mediaRoot;
+    private final LyricsAlignmentProvider lyricsAlignment;
+    private final ApplicationEventPublisher events;
 
     public AdminCatalogService(
             ArtistRepository artists,
             AlbumRepository albums,
             TrackRepository tracks,
-            OpenChordProperties properties) {
+            OpenChordProperties properties,
+            LyricsAlignmentProvider lyricsAlignment,
+            ApplicationEventPublisher events) {
         this.artists = artists;
         this.albums = albums;
         this.tracks = tracks;
         this.mediaRoot = properties.mediaRoot().toAbsolutePath().normalize();
+        this.lyricsAlignment = lyricsAlignment;
+        this.events = events;
     }
 
     @Transactional(readOnly = true)
@@ -126,7 +133,8 @@ public class AdminCatalogService {
                         trackNumber,
                         audioPath,
                         contentType);
-        parseLyrics(lyrics, durationMs).forEach(track::addLyricLine);
+        List<LyricLine> lyricLines = parseLyrics(lyrics, durationMs);
+        track.replaceSynchronizedLyrics(sourceText(lyricLines), lyricLines);
         album.addTrack(track);
         albums.saveAndFlush(album);
         return AdminController.TrackView.from(track);
@@ -146,8 +154,58 @@ public class AdminCatalogService {
                 tracks
                         .findDetailedById(id)
                         .orElseThrow(() -> new IllegalArgumentException("Track not found"));
-        track.replaceLyrics(parseLyrics(lyrics, track.getDurationMs()));
+        List<LyricLine> lyricLines = parseLyrics(lyrics, track.getDurationMs());
+        String sourceText =
+                track.getLyricsSource().isBlank()
+                        ? sourceText(lyricLines)
+                        : track.getLyricsSource();
+        // Hibernate can insert replacements before orphan deletes. Flush the empty collection
+        // first so a line reusing the same (track_id, start_ms) does not violate the DB key.
+        track.replaceLyrics(List.of());
+        tracks.saveAndFlush(track);
+        track.replaceSynchronizedLyrics(sourceText, lyricLines);
         return AdminController.TrackView.from(tracks.saveAndFlush(track));
+    }
+
+    @Transactional(readOnly = true)
+    public AdminController.LyricsDocumentView lyrics(UUID id) {
+        return lyricsView(detailedTrack(id));
+    }
+
+    @Transactional
+    public AdminController.LyricsDocumentView replaceLyricsSource(UUID id, String sourceText) {
+        Track track = detailedTrack(id);
+        track.replaceLyricsSource(sourceText);
+        return lyricsView(tracks.saveAndFlush(track));
+    }
+
+    @Transactional
+    public AdminController.LyricsDocumentView alignLyrics(UUID id) {
+        if (!lyricsAlignment.isAvailable()) {
+            throw new IllegalStateException("Lyrics alignment engine is not configured");
+        }
+        Track track = detailedTrack(id);
+        track.beginLyricsAlignment();
+        tracks.saveAndFlush(track);
+        Path audio = mediaRoot.resolve(track.getAudioPath()).normalize();
+        if (!audio.startsWith(mediaRoot)) throw new IllegalArgumentException("Invalid audio path");
+        events.publishEvent(
+                new LyricsAlignmentWorker.Requested(
+                        track.getId(),
+                        audio,
+                        track.getLyricsSource(),
+                        track.getDurationMs()));
+        return lyricsView(track);
+    }
+
+    private Track detailedTrack(UUID id) {
+        return tracks
+                .findDetailedById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Track not found"));
+    }
+
+    private AdminController.LyricsDocumentView lyricsView(Track track) {
+        return AdminController.LyricsDocumentView.from(track, lyricsAlignment.isAvailable());
     }
 
     /**
@@ -197,6 +255,10 @@ public class AdminCatalogService {
             }
         }
         return result;
+    }
+
+    private static String sourceText(List<LyricLine> lines) {
+        return lines.stream().map(LyricLine::getText).reduce((left, right) -> left + "\n" + right).orElse("");
     }
 
     private void store(MultipartFile file, String relativePath) throws IOException {

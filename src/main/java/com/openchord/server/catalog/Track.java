@@ -2,6 +2,9 @@ package com.openchord.server.catalog;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Column;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
@@ -38,6 +41,18 @@ public class Track {
     private String originalPath;
     private String originalContentType;
     private String originalFilename;
+
+    @Column(columnDefinition = "TEXT")
+    private String lyricsSource;
+
+    @Enumerated(EnumType.STRING)
+    private LyricsStatus lyricsStatus = LyricsStatus.EMPTY;
+    private String lyricsAlignmentEngine;
+
+    @Column(columnDefinition = "TEXT")
+    private String lyricsAlignmentError;
+
+    private Float lyricsAverageConfidence;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "album_id")
@@ -81,6 +96,7 @@ public class Track {
     public void addLyricLine(LyricLine line) {
         lyrics.add(line);
         line.attachTo(this);
+        lyricsStatus = LyricsStatus.SYNCED;
     }
 
     /**
@@ -91,6 +107,44 @@ public class Track {
     public void replaceLyrics(List<LyricLine> lines) {
         lyrics.clear();
         lines.forEach(this::addLyricLine);
+        lyricsStatus = lines.isEmpty() ? sourceStatus() : LyricsStatus.SYNCED;
+    }
+
+    /** Stores editable source text and invalidates timings derived from an older source. */
+    public void replaceLyricsSource(String source) {
+        lyricsSource = normalizeSource(source);
+        lyrics.clear();
+        lyricsStatus = sourceStatus();
+        clearAlignmentMetadata();
+    }
+
+    /** Stores both the source document and synchronized lines from an LRC import. */
+    public void replaceSynchronizedLyrics(String source, List<LyricLine> lines) {
+        lyricsSource = normalizeSource(source);
+        clearAlignmentMetadata();
+        replaceLyrics(lines);
+    }
+
+    public void beginLyricsAlignment() {
+        if (lyricsSource == null) throw new IllegalStateException("Lyrics source is empty");
+        lyricsStatus = LyricsStatus.PROCESSING;
+        lyricsAlignmentError = null;
+    }
+
+    public void completeLyricsAlignment(List<LyricLine> lines, String engine, float confidence) {
+        if (lines.isEmpty()) throw new IllegalArgumentException("Alignment returned no lyric lines");
+        replaceLyrics(lines);
+        lyricsStatus = LyricsStatus.NEEDS_REVIEW;
+        lyricsAlignmentEngine = engine;
+        lyricsAverageConfidence = confidence;
+        lyricsAlignmentError = null;
+    }
+
+    public void failLyricsAlignment(String error) {
+        lyrics.clear();
+        lyricsStatus = LyricsStatus.FAILED;
+        lyricsAlignmentError = error == null || error.isBlank() ? "Lyrics alignment failed" : error;
+        lyricsAverageConfidence = null;
     }
 
     public UUID getId() {
@@ -144,5 +198,40 @@ public class Track {
      */
     public List<LyricLine> getLyrics() {
         return List.copyOf(lyrics);
+    }
+
+    public String getLyricsSource() {
+        return lyricsSource == null ? "" : lyricsSource;
+    }
+
+    public LyricsStatus getLyricsStatus() {
+        return lyricsStatus;
+    }
+
+    public String getLyricsAlignmentEngine() {
+        return lyricsAlignmentEngine;
+    }
+
+    public String getLyricsAlignmentError() {
+        return lyricsAlignmentError;
+    }
+
+    public Float getLyricsAverageConfidence() {
+        return lyricsAverageConfidence;
+    }
+
+    private LyricsStatus sourceStatus() {
+        return lyricsSource == null ? LyricsStatus.EMPTY : LyricsStatus.UNSYNCED;
+    }
+
+    private static String normalizeSource(String source) {
+        if (source == null || source.isBlank()) return null;
+        return source.replace("\r", "").strip();
+    }
+
+    private void clearAlignmentMetadata() {
+        lyricsAlignmentEngine = null;
+        lyricsAlignmentError = null;
+        lyricsAverageConfidence = null;
     }
 }

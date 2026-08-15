@@ -18,4 +18,10 @@ public class AdminExceptionHandler {
     public AdminController.ErrorView badRequest(IllegalArgumentException exception) {
         return new AdminController.ErrorView(exception.getMessage());
     }
+
+    @ExceptionHandler(IllegalStateException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public AdminController.ErrorView unavailable(IllegalStateException exception) {
+        return new AdminController.ErrorView(exception.getMessage());
+    }
 }

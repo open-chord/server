@@ -25,6 +25,7 @@ public class LyricLine {
     private String text;
     private long startMs;
     private long endMs;
+    private Float confidence;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "track_id")
@@ -34,9 +35,14 @@ public class LyricLine {
     }
 
     public LyricLine(String text, long startMs, long endMs) {
+        this(text, startMs, endMs, null);
+    }
+
+    public LyricLine(String text, long startMs, long endMs, Float confidence) {
         this.text = text;
         this.startMs = startMs;
         this.endMs = endMs;
+        this.confidence = confidence;
     }
 
     void attachTo(Track track) {
@@ -57,5 +63,9 @@ public class LyricLine {
 
     public long getEndMs() {
         return endMs;
+    }
+
+    public Float getConfidence() {
+        return confidence;
     }
 }

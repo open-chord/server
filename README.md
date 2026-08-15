@@ -38,6 +38,32 @@ the archive format itself remains richer than this first implementation.
 Durations and lyric timestamps are integer milliseconds. The GraphQL schema is
 kept in `src/main/resources/graphql/schema.graphqls`.
 
+### Automatic lyrics alignment
+
+Set `LYRICS_ALIGNER_URL` to a local `whisper.cpp` HTTP server. OpenChord uploads
+managed audio to its `/inference` endpoint and performs forced alignment against
+the saved source text. Runtime details are documented in
+[`docs/architecture.md`](docs/architecture.md#lyrics). Without this setting the
+manual source/LRC workflow remains available and the automatic action is
+reported as unavailable.
+
+For the bundled CPU-oriented local setup, download the multilingual `small`
+model once and start the compose overlay:
+
+```sh
+./scripts/download-whisper-model.sh small
+docker compose -f compose.yaml -f compose.lyrics.yaml up --build
+```
+
+The registry currently publishes separate `main` and `main-arm64` tags. The
+download helper selects one from the host architecture. The compose runtime
+defaults to the amd64 image because the current official arm64 server can raise
+`SIGILL` in some macOS Docker virtual machines. Native Linux arm64 deployments
+can opt in with `WHISPER_IMAGE=ghcr.io/ggml-org/whisper.cpp:main-arm64` and
+`WHISPER_PLATFORM=linux/arm64`.
+Model files are intentionally excluded from the application image and remain in
+`models/whisper` on the host.
+
 ## Run locally
 
 Java 21 is required.
