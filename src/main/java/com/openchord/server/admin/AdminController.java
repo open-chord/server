@@ -2,6 +2,7 @@ package com.openchord.server.admin;
 
 import com.openchord.server.catalog.Album;
 import com.openchord.server.catalog.Track;
+import com.openchord.server.catalog.LyricsStatus;
 
 import java.io.IOException;
 import java.util.List;
@@ -71,12 +72,43 @@ public class AdminController {
         return catalog.replaceLyrics(id, request.lyrics());
     }
 
+    @GetMapping("/tracks/{id}/lyrics")
+    public LyricsDocumentView lyrics(@PathVariable UUID id) {
+        return catalog.lyrics(id);
+    }
+
+    @PutMapping("/tracks/{id}/lyrics/source")
+    public LyricsDocumentView replaceLyricsSource(
+            @PathVariable UUID id, @RequestBody LyricsSourceRequest request) {
+        return catalog.replaceLyricsSource(id, request.sourceText());
+    }
+
     /**
      * Replacement synchronized lyrics submitted by an administrator.
      *
      * @param lyrics LRC or plain text; blank removes existing lines
      */
     public record LyricsRequest(String lyrics) {
+    }
+
+    public record LyricsSourceRequest(String sourceText) {
+    }
+
+    public record LyricLineView(UUID id, String text, long startMs, long endMs) {
+        static LyricLineView from(com.openchord.server.catalog.LyricLine line) {
+            return new LyricLineView(
+                    line.getId(), line.getText(), line.getStartMs(), line.getEndMs());
+        }
+    }
+
+    public record LyricsDocumentView(
+            String sourceText, LyricsStatus status, List<LyricLineView> lines) {
+        static LyricsDocumentView from(Track track) {
+            return new LyricsDocumentView(
+                    track.getLyricsSource(),
+                    track.getLyricsStatus(),
+                    track.getLyrics().stream().map(LyricLineView::from).toList());
+        }
     }
 
     /**

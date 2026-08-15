@@ -130,6 +130,13 @@ timestamp; the final line ends at the track duration. Nonblank plain-text lines
 are accepted for compatibility and receive synthetic timestamps at five-second
 intervals based on source line number. A blank document removes all lyrics.
 
+The editable workflow keeps unsynchronized source text on the track separately
+from derived `lyric_lines`. `GET /api/admin/tracks/{id}/lyrics` returns both the
+source and current intervals. Updating `/lyrics/source` invalidates older
+intervals and moves the document to `UNSYNCED`; importing valid LRC moves it to
+`SYNCED`. This separation lets an alignment engine be added without presenting
+synthetic timestamps as reviewed synchronization.
+
 ## Security assumptions
 
 The admin API, including archive import and export, supports an optional shared

@@ -126,7 +126,7 @@ public class AdminCatalogService {
                         trackNumber,
                         audioPath,
                         contentType);
-        parseLyrics(lyrics, durationMs).forEach(track::addLyricLine);
+        track.replaceSynchronizedLyrics(lyrics, parseLyrics(lyrics, durationMs));
         album.addTrack(track);
         albums.saveAndFlush(album);
         return AdminController.TrackView.from(track);
@@ -146,8 +146,26 @@ public class AdminCatalogService {
                 tracks
                         .findDetailedById(id)
                         .orElseThrow(() -> new IllegalArgumentException("Track not found"));
-        track.replaceLyrics(parseLyrics(lyrics, track.getDurationMs()));
+        track.replaceSynchronizedLyrics(lyrics, parseLyrics(lyrics, track.getDurationMs()));
         return AdminController.TrackView.from(tracks.saveAndFlush(track));
+    }
+
+    @Transactional(readOnly = true)
+    public AdminController.LyricsDocumentView lyrics(UUID id) {
+        return AdminController.LyricsDocumentView.from(detailedTrack(id));
+    }
+
+    @Transactional
+    public AdminController.LyricsDocumentView replaceLyricsSource(UUID id, String sourceText) {
+        Track track = detailedTrack(id);
+        track.replaceLyricsSource(sourceText);
+        return AdminController.LyricsDocumentView.from(tracks.saveAndFlush(track));
+    }
+
+    private Track detailedTrack(UUID id) {
+        return tracks
+                .findDetailedById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Track not found"));
     }
 
     /**
