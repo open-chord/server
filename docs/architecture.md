@@ -8,12 +8,16 @@ operational assumptions.
 
 | Package | Responsibility |
 | --- | --- |
+| `auth` | Server bootstrap, users, opaque bearer sessions and role-based access |
 | `catalog` | JPA catalog aggregate, catalog queries and repository fetch plans |
 | `playlist` | Ordered playlists, artwork and track membership APIs |
 | `graphql` | Public catalog and playback API mapping |
 | `playback` | Append-only playback events and recently played ordering |
 | `media` | Validated filesystem lookup and HTTP delivery of audio and artwork |
-| `admin` | Trusted-network mutation, album import and `.openchord` archive workflows |
+| `admin` | Owner-only catalog inspection and direct single-track mutation |
+| `admin.importing` | Two-phase album staging, inspection, transcoding and commit |
+| `admin.archive` | Portable archive validation, import and streaming export |
+| `admin.lyrics` | Optional speech inference, forced alignment and result persistence |
 | `config` | GraphQL scalar wiring and typed `openchord.*` configuration |
 
 Controllers translate transport values into application calls. Services own
@@ -151,12 +155,17 @@ failures move the document to `FAILED`; only an explicit LRC save marks it
 
 ## Security assumptions
 
-The admin API, including archive import and export, supports an optional shared
-secret through `OPENCHORD_ADMIN_API_KEY` and the `X-OpenChord-Admin-Key` request
-header. Leaving it unset preserves trusted-local-network behavior. Before
-internet exposure, configure the key, place the service behind authenticated
-access, and apply request-size limits appropriate for media uploads and library
-archives.
+The first successful setup creates the sole owner account and stores the chosen
+server mode. `PERSONAL` mode keeps registration closed; `FAMILY` mode permits
+member registration. All non-bootstrap routes require an opaque access token,
+and `/api/admin/**` additionally requires the `OWNER` role. Access and refresh
+tokens are stored only as SHA-256 hashes. Refresh rotates both tokens, logout
+revokes the session, and disabled users cannot authenticate.
+
+Media requests also accept the access token in the `access_token` query
+parameter because AVPlayer cannot attach the bearer header used by the JSON
+APIs. Treat media URLs as credentials: avoid logging full query strings and use
+TLS outside a trusted local network.
 
 Archive import validates ZIP entry paths, declared and extracted sizes,
 checksums and manifest references. The application-wide multipart limit
@@ -180,7 +189,8 @@ Required production concerns:
 - `PUBLIC_BASE_URL` set to the externally reachable origin used in GraphQL
   media URLs;
 - FFmpeg and FFprobe installed when album import is enabled;
-- authentication at the ingress for `/api/admin/**`;
+- TLS and rate limiting at the ingress for authenticated APIs;
+- redaction of media query parameters from reverse-proxy access logs;
 - monitoring of liveness, readiness, disk capacity, abandoned import data and
   archive staging data;
 - backup and reconciliation of PostgreSQL and managed media as one operational

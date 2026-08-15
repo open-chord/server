@@ -86,7 +86,7 @@ public class AuthService {
         UserSession session = sessions.findByRefreshTokenHash(hash(refreshToken))
                 .filter(value -> value.getRevokedAt() == null && value.getRefreshExpiresAt().isAfter(now))
                 .orElseThrow(() -> new BadCredentialsException("Invalid refresh token"));
-        TokenPair pair = tokens(now);
+        TokenPair pair = tokens();
         session.rotate(hash(pair.access()), hash(pair.refresh()), now.plus(ACCESS_TTL), now.plus(REFRESH_TTL), now);
         return response(session.getUser(), pair, now);
     }
@@ -107,7 +107,7 @@ public class AuthService {
     }
 
     private AuthResponse issue(OpenChordUser user, String deviceName, Instant now) {
-        TokenPair pair = tokens(now);
+        TokenPair pair = tokens();
         sessions.save(new UserSession(user, hash(pair.access()), hash(pair.refresh()), now.plus(ACCESS_TTL), now.plus(REFRESH_TTL), normalizeDevice(deviceName), now));
         return response(user, pair, now);
     }
@@ -116,7 +116,7 @@ public class AuthService {
         return new AuthResponse(pair.access(), pair.refresh(), now.plus(ACCESS_TTL), UserView.from(user));
     }
 
-    private TokenPair tokens(Instant ignored) {
+    private TokenPair tokens() {
         byte[] access = new byte[32];
         byte[] refresh = new byte[48];
         random.nextBytes(access);

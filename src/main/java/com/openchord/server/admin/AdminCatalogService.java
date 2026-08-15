@@ -1,5 +1,7 @@
 package com.openchord.server.admin;
 
+import com.openchord.server.admin.lyrics.LyricsAlignmentProvider;
+import com.openchord.server.admin.lyrics.LyricsAlignmentWorker;
 import com.openchord.server.catalog.Album;
 import com.openchord.server.catalog.AlbumRepository;
 import com.openchord.server.catalog.Artist;
@@ -62,8 +64,8 @@ public class AdminCatalogService {
     }
 
     @Transactional(readOnly = true)
-    public List<AdminController.AlbumView> catalog() {
-        return albums.findAllDetailed().stream().map(AdminController.AlbumView::from).toList();
+    public List<AdminAlbumView> catalog() {
+        return albums.findAllDetailed().stream().map(AdminAlbumView::from).toList();
     }
 
     /**
@@ -88,7 +90,7 @@ public class AdminCatalogService {
      * @throws IllegalArgumentException if required metadata or audio is missing
      */
     @Transactional
-    public AdminController.TrackView createTrack(
+    public AdminTrackView createTrack(
             String artistName,
             String albumTitle,
             int releaseYear,
@@ -137,7 +139,7 @@ public class AdminCatalogService {
         track.replaceSynchronizedLyrics(sourceText(lyricLines), lyricLines);
         album.addTrack(track);
         albums.saveAndFlush(album);
-        return AdminController.TrackView.from(track);
+        return AdminTrackView.from(track);
     }
 
     /**
@@ -149,7 +151,7 @@ public class AdminCatalogService {
      * @throws IllegalArgumentException if the track does not exist or the LRC document is invalid
      */
     @Transactional
-    public AdminController.TrackView replaceLyrics(UUID id, String lyrics) {
+    public AdminTrackView replaceLyrics(UUID id, String lyrics) {
         Track track =
                 tracks
                         .findDetailedById(id)
@@ -164,23 +166,23 @@ public class AdminCatalogService {
         track.replaceLyrics(List.of());
         tracks.saveAndFlush(track);
         track.replaceSynchronizedLyrics(sourceText, lyricLines);
-        return AdminController.TrackView.from(tracks.saveAndFlush(track));
+        return AdminTrackView.from(tracks.saveAndFlush(track));
     }
 
     @Transactional(readOnly = true)
-    public AdminController.LyricsDocumentView lyrics(UUID id) {
+    public AdminLyricsDocumentView lyrics(UUID id) {
         return lyricsView(detailedTrack(id));
     }
 
     @Transactional
-    public AdminController.LyricsDocumentView replaceLyricsSource(UUID id, String sourceText) {
+    public AdminLyricsDocumentView replaceLyricsSource(UUID id, String sourceText) {
         Track track = detailedTrack(id);
         track.replaceLyricsSource(sourceText);
         return lyricsView(tracks.saveAndFlush(track));
     }
 
     @Transactional
-    public AdminController.LyricsDocumentView alignLyrics(UUID id) {
+    public AdminLyricsDocumentView alignLyrics(UUID id) {
         if (!lyricsAlignment.isAvailable()) {
             throw new IllegalStateException("Lyrics alignment engine is not configured");
         }
@@ -204,8 +206,8 @@ public class AdminCatalogService {
                 .orElseThrow(() -> new IllegalArgumentException("Track not found"));
     }
 
-    private AdminController.LyricsDocumentView lyricsView(Track track) {
-        return AdminController.LyricsDocumentView.from(track, lyricsAlignment.isAvailable());
+    private AdminLyricsDocumentView lyricsView(Track track) {
+        return AdminLyricsDocumentView.from(track, lyricsAlignment.isAvailable());
     }
 
     /**

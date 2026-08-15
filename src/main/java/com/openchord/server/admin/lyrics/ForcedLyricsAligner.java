@@ -1,4 +1,4 @@
-package com.openchord.server.admin;
+package com.openchord.server.admin.lyrics;
 
 import java.text.Normalizer;
 import java.util.ArrayList;

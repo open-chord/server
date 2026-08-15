@@ -1,4 +1,4 @@
-package com.openchord.server.admin;
+package com.openchord.server.admin.lyrics;
 
 import java.nio.file.Path;
 import java.util.List;

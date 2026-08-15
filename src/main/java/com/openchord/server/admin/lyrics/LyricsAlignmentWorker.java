@@ -1,4 +1,4 @@
-package com.openchord.server.admin;
+package com.openchord.server.admin.lyrics;
 
 import java.nio.file.Path;
 import java.util.UUID;
@@ -10,7 +10,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 /** Runs model inference after the request transaction has committed. */
 @Component
-class LyricsAlignmentWorker {
+public class LyricsAlignmentWorker {
     private final LyricsAlignmentProvider provider;
     private final LyricsAlignmentPersistence persistence;
 
@@ -36,6 +36,6 @@ class LyricsAlignmentWorker {
         return message == null || message.isBlank() ? error.getClass().getSimpleName() : message;
     }
 
-    record Requested(UUID trackId, Path audio, String sourceText, long durationMs) {
+    public record Requested(UUID trackId, Path audio, String sourceText, long durationMs) {
     }
 }

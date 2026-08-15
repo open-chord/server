@@ -1,8 +1,6 @@
 package com.openchord.server.admin;
 
-import com.openchord.server.catalog.Album;
-import com.openchord.server.catalog.Track;
-import com.openchord.server.catalog.LyricsStatus;
+import com.openchord.server.admin.importing.AlbumImportController;
 
 import java.io.IOException;
 import java.util.List;
@@ -21,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * Trusted-network administration API for catalog inspection and direct track mutations.
+ * Owner-only administration API for catalog inspection and direct track mutations.
  *
  * <p>Album-sized, reviewable uploads use {@link AlbumImportController}; this controller serves the
  * simpler single-track workflow.
@@ -36,13 +34,13 @@ public class AdminController {
     }
 
     @GetMapping("/catalog")
-    public List<AlbumView> catalog() {
+    public List<AdminAlbumView> catalog() {
         return catalog.catalog();
     }
 
     @PostMapping(path = "/tracks", consumes = "multipart/form-data")
     @ResponseStatus(HttpStatus.CREATED)
-    public TrackView createTrack(
+    public AdminTrackView createTrack(
             @RequestParam String artist,
             @RequestParam String album,
             @RequestParam int releaseYear,
@@ -68,121 +66,33 @@ public class AdminController {
     }
 
     @PutMapping("/tracks/{id}/lyrics")
-    public TrackView replaceLyrics(@PathVariable UUID id, @RequestBody LyricsRequest request) {
+    public AdminTrackView replaceLyrics(
+            @PathVariable UUID id, @RequestBody LyricsRequest request) {
         return catalog.replaceLyrics(id, request.lyrics());
     }
 
     @GetMapping("/tracks/{id}/lyrics")
-    public LyricsDocumentView lyrics(@PathVariable UUID id) {
+    public AdminLyricsDocumentView lyrics(@PathVariable UUID id) {
         return catalog.lyrics(id);
     }
 
     @PutMapping("/tracks/{id}/lyrics/source")
-    public LyricsDocumentView replaceLyricsSource(
+    public AdminLyricsDocumentView replaceLyricsSource(
             @PathVariable UUID id, @RequestBody LyricsSourceRequest request) {
         return catalog.replaceLyricsSource(id, request.sourceText());
     }
 
     @PostMapping("/tracks/{id}/lyrics/alignment")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public LyricsDocumentView alignLyrics(@PathVariable UUID id) {
+    public AdminLyricsDocumentView alignLyrics(@PathVariable UUID id) {
         return catalog.alignLyrics(id);
     }
 
-    /**
-     * Replacement synchronized lyrics submitted by an administrator.
-     *
-     * @param lyrics LRC or plain text; blank removes existing lines
-     */
+    /** Synchronized LRC or plain text submitted by an owner. */
     public record LyricsRequest(String lyrics) {
     }
 
+    /** Authoritative unsynchronized source submitted before alignment. */
     public record LyricsSourceRequest(String sourceText) {
-    }
-
-    public record LyricLineView(
-            UUID id, String text, long startMs, long endMs, Float confidence) {
-        static LyricLineView from(com.openchord.server.catalog.LyricLine line) {
-            return new LyricLineView(
-                    line.getId(),
-                    line.getText(),
-                    line.getStartMs(),
-                    line.getEndMs(),
-                    line.getConfidence());
-        }
-    }
-
-    public record LyricsDocumentView(
-            String sourceText,
-            LyricsStatus status,
-            boolean alignmentAvailable,
-            String alignmentEngine,
-            String alignmentError,
-            Float averageConfidence,
-            List<LyricLineView> lines) {
-        static LyricsDocumentView from(Track track, boolean alignmentAvailable) {
-            return new LyricsDocumentView(
-                    track.getLyricsSource(),
-                    track.getLyricsStatus(),
-                    alignmentAvailable,
-                    track.getLyricsAlignmentEngine(),
-                    track.getLyricsAlignmentError(),
-                    track.getLyricsAverageConfidence(),
-                    track.getLyrics().stream().map(LyricLineView::from).toList());
-        }
-    }
-
-    /**
-     * Stable error body returned for rejected admin requests.
-     *
-     * @param message human-readable reason suitable for the admin UI
-     */
-    public record ErrorView(String message) {
-    }
-
-    /**
-     * Compact track projection used by the administration catalog.
-     *
-     * @param id         track identifier
-     * @param title      display title
-     * @param durationMs duration in milliseconds
-     * @param discNumber one-based disc number
-     * @param number     one-based position on the disc
-     * @param lyricLines number of synchronized lyric intervals
-     */
-    public record TrackView(
-            UUID id, String title, long durationMs, int discNumber, int number, int lyricLines) {
-        static TrackView from(Track track) {
-            return new TrackView(
-                    track.getId(),
-                    track.getTitle(),
-                    track.getDurationMs(),
-                    track.getDiscNumber(),
-                    track.getNumber(),
-                    track.getLyrics().size());
-        }
-    }
-
-    /**
-     * Album projection used by the administration catalog.
-     *
-     * @param id         album identifier
-     * @param title      display title
-     * @param year       release year
-     * @param artist     artist display name
-     * @param hasArtwork whether a managed artwork path is present
-     * @param tracks     tracks in disc and track order
-     */
-    public record AlbumView(
-            UUID id, String title, int year, String artist, boolean hasArtwork, List<TrackView> tracks) {
-        static AlbumView from(Album album) {
-            return new AlbumView(
-                    album.getId(),
-                    album.getTitle(),
-                    album.getReleaseYear(),
-                    album.getArtist().getName(),
-                    album.getArtworkPath() != null,
-                    album.getTracks().stream().map(TrackView::from).toList());
-        }
     }
 }
