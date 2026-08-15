@@ -151,8 +151,7 @@ The code is organized by product boundary rather than technical layer:
 - `admin.importing`, `admin.archive`, `admin.lyrics` — independent administration workflows;
 - `config` — typed runtime settings and framework wiring.
 
-Package-level contracts live in `package-info.java`; deeper transaction,
-filesystem, and security decisions are documented in
+Deeper transaction, filesystem, and security decisions are documented in
 [`docs/architecture.md`](docs/architecture.md).
 
 ## Quality gates
