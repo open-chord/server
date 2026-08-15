@@ -4,5 +4,8 @@ package com.openchord.server.catalog;
 public enum LyricsStatus {
     EMPTY,
     UNSYNCED,
+    PROCESSING,
+    NEEDS_REVIEW,
+    FAILED,
     SYNCED
 }

@@ -47,6 +47,12 @@ public class Track {
 
     @Enumerated(EnumType.STRING)
     private LyricsStatus lyricsStatus = LyricsStatus.EMPTY;
+    private String lyricsAlignmentEngine;
+
+    @Column(columnDefinition = "TEXT")
+    private String lyricsAlignmentError;
+
+    private Float lyricsAverageConfidence;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "album_id")
@@ -109,12 +115,36 @@ public class Track {
         lyricsSource = normalizeSource(source);
         lyrics.clear();
         lyricsStatus = sourceStatus();
+        clearAlignmentMetadata();
     }
 
     /** Stores both the source document and synchronized lines from an LRC import. */
     public void replaceSynchronizedLyrics(String source, List<LyricLine> lines) {
         lyricsSource = normalizeSource(source);
+        clearAlignmentMetadata();
         replaceLyrics(lines);
+    }
+
+    public void beginLyricsAlignment() {
+        if (lyricsSource == null) throw new IllegalStateException("Lyrics source is empty");
+        lyricsStatus = LyricsStatus.PROCESSING;
+        lyricsAlignmentError = null;
+    }
+
+    public void completeLyricsAlignment(List<LyricLine> lines, String engine, float confidence) {
+        if (lines.isEmpty()) throw new IllegalArgumentException("Alignment returned no lyric lines");
+        replaceLyrics(lines);
+        lyricsStatus = LyricsStatus.NEEDS_REVIEW;
+        lyricsAlignmentEngine = engine;
+        lyricsAverageConfidence = confidence;
+        lyricsAlignmentError = null;
+    }
+
+    public void failLyricsAlignment(String error) {
+        lyrics.clear();
+        lyricsStatus = LyricsStatus.FAILED;
+        lyricsAlignmentError = error == null || error.isBlank() ? "Lyrics alignment failed" : error;
+        lyricsAverageConfidence = null;
     }
 
     public UUID getId() {
@@ -178,6 +208,18 @@ public class Track {
         return lyricsStatus;
     }
 
+    public String getLyricsAlignmentEngine() {
+        return lyricsAlignmentEngine;
+    }
+
+    public String getLyricsAlignmentError() {
+        return lyricsAlignmentError;
+    }
+
+    public Float getLyricsAverageConfidence() {
+        return lyricsAverageConfidence;
+    }
+
     private LyricsStatus sourceStatus() {
         return lyricsSource == null ? LyricsStatus.EMPTY : LyricsStatus.UNSYNCED;
     }
@@ -185,5 +227,11 @@ public class Track {
     private static String normalizeSource(String source) {
         if (source == null || source.isBlank()) return null;
         return source.replace("\r", "").strip();
+    }
+
+    private void clearAlignmentMetadata() {
+        lyricsAlignmentEngine = null;
+        lyricsAlignmentError = null;
+        lyricsAverageConfidence = null;
     }
 }

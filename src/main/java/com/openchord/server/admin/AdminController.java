@@ -83,6 +83,12 @@ public class AdminController {
         return catalog.replaceLyricsSource(id, request.sourceText());
     }
 
+    @PostMapping("/tracks/{id}/lyrics/alignment")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public LyricsDocumentView alignLyrics(@PathVariable UUID id) {
+        return catalog.alignLyrics(id);
+    }
+
     /**
      * Replacement synchronized lyrics submitted by an administrator.
      *
@@ -94,19 +100,34 @@ public class AdminController {
     public record LyricsSourceRequest(String sourceText) {
     }
 
-    public record LyricLineView(UUID id, String text, long startMs, long endMs) {
+    public record LyricLineView(
+            UUID id, String text, long startMs, long endMs, Float confidence) {
         static LyricLineView from(com.openchord.server.catalog.LyricLine line) {
             return new LyricLineView(
-                    line.getId(), line.getText(), line.getStartMs(), line.getEndMs());
+                    line.getId(),
+                    line.getText(),
+                    line.getStartMs(),
+                    line.getEndMs(),
+                    line.getConfidence());
         }
     }
 
     public record LyricsDocumentView(
-            String sourceText, LyricsStatus status, List<LyricLineView> lines) {
-        static LyricsDocumentView from(Track track) {
+            String sourceText,
+            LyricsStatus status,
+            boolean alignmentAvailable,
+            String alignmentEngine,
+            String alignmentError,
+            Float averageConfidence,
+            List<LyricLineView> lines) {
+        static LyricsDocumentView from(Track track, boolean alignmentAvailable) {
             return new LyricsDocumentView(
                     track.getLyricsSource(),
                     track.getLyricsStatus(),
+                    alignmentAvailable,
+                    track.getLyricsAlignmentEngine(),
+                    track.getLyricsAlignmentError(),
+                    track.getLyricsAverageConfidence(),
                     track.getLyrics().stream().map(LyricLineView::from).toList());
         }
     }

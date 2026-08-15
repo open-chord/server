@@ -137,6 +137,18 @@ intervals and moves the document to `UNSYNCED`; importing valid LRC moves it to
 `SYNCED`. This separation lets an alignment engine be added without presenting
 synthetic timestamps as reviewed synchronization.
 
+Automatic alignment uses an optional local `whisper.cpp` HTTP server configured
+with `LYRICS_ALIGNER_URL`. `POST /api/admin/tracks/{id}/lyrics/alignment` commits
+the `PROCESSING` state before an asynchronous worker uploads the managed audio
+to whisper.cpp's `/inference` endpoint and requests `verbose_json`. The backend
+normalizes the returned timestamped words, performs fuzzy sequence alignment
+against the authoritative source, and derives line intervals and confidence.
+
+The server validates ordering, track bounds, nonempty text, and confidence
+ranges before persisting a result as `NEEDS_REVIEW`. Provider or validation
+failures move the document to `FAILED`; only an explicit LRC save marks it
+`SYNCED`.
+
 ## Security assumptions
 
 The admin API, including archive import and export, supports an optional shared

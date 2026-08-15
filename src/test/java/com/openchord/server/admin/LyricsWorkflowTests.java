@@ -38,4 +38,25 @@ class LyricsWorkflowTests {
         assertEquals(4_500, track.getLyrics().get(0).getEndMs());
         assertEquals(60_000, track.getLyrics().get(1).getEndMs());
     }
+
+    @Test
+    void alignmentResultRequiresReviewAndRetainsConfidence() {
+        Track track = new Track("Song", 60_000, 1, 1, "tracks/song.m4a", "audio/mp4");
+        track.replaceLyricsSource("First line\nSecond line");
+
+        track.beginLyricsAlignment();
+        assertEquals(LyricsStatus.PROCESSING, track.getLyricsStatus());
+
+        track.completeLyricsAlignment(
+                List.of(
+                        new LyricLine("First line", 1_000, 4_500, 0.96f),
+                        new LyricLine("Second line", 4_500, 9_000, 0.88f)),
+                "whisper-test",
+                0.92f);
+
+        assertEquals(LyricsStatus.NEEDS_REVIEW, track.getLyricsStatus());
+        assertEquals("whisper-test", track.getLyricsAlignmentEngine());
+        assertEquals(0.92f, track.getLyricsAverageConfidence());
+        assertEquals(0.96f, track.getLyrics().get(0).getConfidence());
+    }
 }
