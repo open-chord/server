@@ -2,11 +2,6 @@ package com.openchord.server.admin.importing;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.openchord.server.admin.importing.AlbumImportController.CommitImport;
-import com.openchord.server.admin.importing.AlbumImportController.CommitTrack;
-import com.openchord.server.admin.importing.AlbumImportController.ImportDraft;
-import com.openchord.server.admin.importing.AlbumImportController.ImportResult;
-import com.openchord.server.admin.importing.AlbumImportController.ImportTrack;
 import com.openchord.server.catalog.Album;
 import com.openchord.server.catalog.AlbumRepository;
 import com.openchord.server.catalog.Artist;
@@ -37,7 +32,7 @@ import org.springframework.web.multipart.MultipartFile;
  * Imports an album through a reviewable, two-phase workflow.
  *
  * <p>{@link #analyze(List)} stores uploads in an isolated staging directory and returns detected
- * metadata without changing the catalog. {@link #commit(UUID, CommitImport)} accepts the reviewed
+ * metadata without changing the catalog. {@link #commit(UUID, CommitAlbumImport)} accepts the reviewed
  * metadata, copies or transcodes the staged audio, and persists the album. Staged filenames are
  * opaque tokens and are resolved below the configured media root.
  *
@@ -79,7 +74,8 @@ public class AlbumImportService {
      * @throws IOException              if an upload cannot be staged or inspected
      * @throws InterruptedException     if media inspection is interrupted
      */
-    public ImportDraft analyze(List<MultipartFile> files) throws IOException, InterruptedException {
+    public AlbumImportDraft analyze(List<MultipartFile> files)
+            throws IOException, InterruptedException {
         if (files == null || files.isEmpty()) {
             throw new IllegalArgumentException("Choose at least one audio file");
         }
@@ -87,7 +83,7 @@ public class AlbumImportService {
         Path staging = mediaRoot.resolve(".imports").resolve(id.toString()).normalize();
         Files.createDirectories(staging);
 
-        List<ImportTrack> tracks = new ArrayList<>();
+        List<AlbumImportTrack> tracks = new ArrayList<>();
         String artworkFile = null;
         Map<String, Integer> artistsFound = new HashMap<>();
         Map<String, Integer> albumsFound = new HashMap<>();
@@ -125,7 +121,7 @@ public class AlbumImportService {
             }
             if (probe.number() <= 0) issues.add("Не найден номер трека");
             tracks.add(
-                    new ImportTrack(
+                    new AlbumImportTrack(
                             staged,
                             original,
                             title,
@@ -142,12 +138,13 @@ public class AlbumImportService {
             throw new IllegalArgumentException("No supported audio files found");
         }
         tracks.sort(
-                Comparator.comparingInt((ImportTrack value) -> value.number() <= 0 ? 9999 : value.number())
-                        .thenComparing(ImportTrack::originalFilename));
+                Comparator.comparingInt(
+                                (AlbumImportTrack value) -> value.number() <= 0 ? 9999 : value.number())
+                        .thenComparing(AlbumImportTrack::originalFilename));
         int next = 1;
-        List<ImportTrack> numbered = new ArrayList<>();
+        List<AlbumImportTrack> numbered = new ArrayList<>();
         Set<Integer> used = new HashSet<>();
-        for (ImportTrack track : tracks) {
+        for (AlbumImportTrack track : tracks) {
             int number = track.number();
             if (number <= 0 || !used.add(number)) {
                 while (used.contains(next)) next++;
@@ -155,7 +152,7 @@ public class AlbumImportService {
                 used.add(number);
             }
             numbered.add(
-                    new ImportTrack(
+                    new AlbumImportTrack(
                             track.stagedFile(),
                             track.originalFilename(),
                             track.title(),
@@ -174,7 +171,7 @@ public class AlbumImportService {
         if (numbered.stream().anyMatch(value -> !value.issues().isEmpty())) {
             issues.add("Некоторые метаданные восстановлены автоматически");
         }
-        return new ImportDraft(
+        return new AlbumImportDraft(
                 id,
                 mostCommon(artistsFound, "Unknown Artist"),
                 mostCommon(albumsFound, "Untitled Album"),
@@ -200,7 +197,7 @@ public class AlbumImportService {
      * @throws InterruptedException     if audio transcoding is interrupted
      */
     @Transactional
-    public ImportResult commit(UUID id, CommitImport request)
+    public AlbumImportResult commit(UUID id, CommitAlbumImport request)
             throws IOException, InterruptedException {
         if (request.tracks() == null || request.tracks().isEmpty()) {
             throw new IllegalArgumentException("Album has no tracks");
@@ -230,7 +227,7 @@ public class AlbumImportService {
         Album album = new Album(request.album().strip(), request.year(), artworkPath, artist);
         Set<String> positions = new HashSet<>();
         int transcoded = 0;
-        for (CommitTrack draft : request.tracks()) {
+        for (CommitAlbumTrack draft : request.tracks()) {
             if (!positions.add(draft.discNumber() + ":" + draft.number())) {
                 throw new IllegalArgumentException("Track positions must be unique");
             }
@@ -291,7 +288,8 @@ public class AlbumImportService {
         }
         Album saved = albums.saveAndFlush(album);
         deleteTree(staging);
-        return new ImportResult(saved.getId(), saved.getTitle(), request.tracks().size(), transcoded);
+        return new AlbumImportResult(
+                saved.getId(), saved.getTitle(), request.tracks().size(), transcoded);
     }
 
     private Probe probe(Path file) throws IOException, InterruptedException {

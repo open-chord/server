@@ -36,7 +36,7 @@ public class OpenChordArchiveController {
     }
 
     @GetMapping("/playlists")
-    public List<PlaylistOption> playlists() {
+    public List<PlaylistExportOption> playlists() {
         return archives.playlistOptions();
     }
 
@@ -60,15 +60,8 @@ public class OpenChordArchiveController {
     }
 
     @PostMapping(path = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ImportSummary importArchive(@RequestParam MultipartFile archive) throws IOException {
+    public ArchiveImportSummary importArchive(@RequestParam MultipartFile archive)
+            throws IOException {
         return archives.importArchive(archive);
-    }
-
-    /** Playlist choice displayed by archive export clients. */
-    public record PlaylistOption(UUID id, String name, int tracks) {
-    }
-
-    /** Result of a committed archive import. */
-    public record ImportSummary(int albums, int tracks, int playlists, int skippedAlbums) {
     }
 }

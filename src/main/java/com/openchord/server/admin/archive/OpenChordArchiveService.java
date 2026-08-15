@@ -4,8 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.openchord.server.admin.archive.OpenChordArchiveController.ImportSummary;
-import com.openchord.server.admin.archive.OpenChordArchiveController.PlaylistOption;
 import com.openchord.server.catalog.Album;
 import com.openchord.server.catalog.AlbumRepository;
 import com.openchord.server.catalog.Artist;
@@ -72,9 +70,12 @@ public class OpenChordArchiveService {
     }
 
     @Transactional(readOnly = true)
-    public List<PlaylistOption> playlistOptions() {
+    public List<PlaylistExportOption> playlistOptions() {
         return playlists.findAllDetailed().stream()
-                .map(value -> new PlaylistOption(value.getId(), value.getName(), value.getEntries().size()))
+                .map(
+                        value ->
+                                new PlaylistExportOption(
+                                        value.getId(), value.getName(), value.getEntries().size()))
                 .toList();
     }
 
@@ -158,7 +159,7 @@ public class OpenChordArchiveService {
      * albums are left untouched and reported as skipped.
      */
     @Transactional
-    public ImportSummary importArchive(MultipartFile upload) throws IOException {
+    public ArchiveImportSummary importArchive(MultipartFile upload) throws IOException {
         if (upload == null || upload.isEmpty()) {
             throw new IllegalArgumentException("Choose a .openchord archive");
         }
@@ -299,7 +300,7 @@ public class OpenChordArchiveService {
                 playlists.saveAndFlush(playlist);
                 importedPlaylistCount++;
             }
-            return new ImportSummary(
+            return new ArchiveImportSummary(
                     importedAlbumCount, importedTrackCount, importedPlaylistCount, skippedAlbumCount);
         }
     }

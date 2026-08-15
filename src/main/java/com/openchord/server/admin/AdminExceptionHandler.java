@@ -15,13 +15,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class AdminExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public AdminController.ErrorView badRequest(IllegalArgumentException exception) {
-        return new AdminController.ErrorView(exception.getMessage());
+    public AdminErrorResponse badRequest(IllegalArgumentException exception) {
+        return new AdminErrorResponse(exception.getMessage());
     }
 
     @ExceptionHandler(IllegalStateException.class)
     @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
-    public AdminController.ErrorView unavailable(IllegalStateException exception) {
-        return new AdminController.ErrorView(exception.getMessage());
+    public AdminErrorResponse unavailable(IllegalStateException exception) {
+        return new AdminErrorResponse(exception.getMessage());
     }
 }
